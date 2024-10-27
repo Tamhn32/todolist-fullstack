@@ -16,8 +16,14 @@ type Folder {
   id: String,
   name: String,
   createAt: String,
-  author: Author
+  author: Author,
+  notes: [Note]
 }
+
+type Note {
+    id: String,
+    content: String,
+  }
 
 type Author {
   id: String,
@@ -26,6 +32,7 @@ type Author {
 
 type Query {
   folders: [Folder]
+  folder(folderId: String): Folder
 }
 
 `;
@@ -35,11 +42,20 @@ const resolvers = {
     folders: () => {
       return fakerData.folders;
     },
+    folder: (parent, args) => {
+      const folderId = args.folderId;
+      return fakerData.folders.find((folder) => folder.id === folderId);
+    },
   },
   Folder: {
     author: (parent, args) => {
       const authorId = parent.authorId;
       return fakerData.authors.find((author) => author.id === authorId);
+    },
+    notes: (parent, args) => {
+      console.log({ parent });
+      return fakerData.notes.filter((note) => note.folderId === parent.id);
+      return [];
     },
   },
 }; // Xử lý giữ liệu, và trả về giữ liệu cho phía client dựa théo những query phía client gửi tới
