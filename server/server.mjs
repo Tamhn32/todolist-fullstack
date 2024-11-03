@@ -5,60 +5,25 @@ import { ApolloServerPluginDrainHttpServer } from "@apollo/server/plugin/drainHt
 import bodyParser from "body-parser"; // Import body-parser middleware to parse incoming request bodies (like JSON).
 import { expressMiddleware } from "@apollo/server/express4"; // Import middleware for integrating Apollo Server with Express.
 import cors from "cors";
-import fakerData from "./fakerData/index.js";
+import { resolvers } from "./resolvers/index.js";
+import { typeDefs } from "./schemas/index.js";
+import mongoose from "mongoose";
+import dotenv from "dotenv";
+import "./firebaseConfig.js";
+import { getAuth } from "firebase-admin/auth";
 
+dotenv.config();
 const app = express(); // Create an Express application.
 const httpServer = http.createServer(app); // Create an HTTP server that listens for requests and uses your Express app to respond.
 
 // Define the GraphQL schema (type definitions) - this would normally include your GraphQL types. Documents
-const typeDefs = `#graphql
-type Folder {
-  id: String,
-  name: String,
-  createAt: String,
-  author: Author,
-  notes: [Note]
-}
 
-type Note {
-    id: String,
-    content: String,
-  }
+// Xử lý giữ liệu, và trả về giữ liệu cho phía client dựa théo những query phía client gửi tới
 
-type Author {
-  id: String,
-  name: String
-}
-
-type Query {
-  folders: [Folder]
-  folder(folderId: String): Folder
-}
-
-`;
-
-const resolvers = {
-  Query: {
-    folders: () => {
-      return fakerData.folders;
-    },
-    folder: (parent, args) => {
-      const folderId = args.folderId;
-      return fakerData.folders.find((folder) => folder.id === folderId);
-    },
-  },
-  Folder: {
-    author: (parent, args) => {
-      const authorId = parent.authorId;
-      return fakerData.authors.find((author) => author.id === authorId);
-    },
-    notes: (parent, args) => {
-      console.log({ parent });
-      return fakerData.notes.filter((note) => note.folderId === parent.id);
-      return [];
-    },
-  },
-}; // Xử lý giữ liệu, và trả về giữ liệu cho phía client dựa théo những query phía client gửi tới
+//CONNECT TO DATABASE
+const URI = `mongodb+srv://${process.env.DB_USERNAME}:${process.env.DB_PASSWORD}@note-app-tamn.fflum.mongodb.net/?retryWrites=true&w=majority&appName=note-app-tamn`;
+//const URI = `mongodb+srv://hoangtam:123@note-app-tamn.fflum.mongodb.net/?retryWrites=true&w=majority&appName=note-app-tamn`;
+const PORT = process.env.PORT || 4000;
 
 const server = new ApolloServer({
   typeDefs, // Pass in your type definitions for the GraphQL schema.
@@ -67,16 +32,48 @@ const server = new ApolloServer({
 });
 
 await server.start(); // Start the Apollo Server. It needs to be initialized before handling requests.
+const authorizationJWT = async (req, res, next) => {
+  console.log({ authorization: req.headers.authorization });
+  const authorizationHeader = req.headers.authorization;
+  if (authorizationHeader) {
+    const accessToken = authorizationHeader.split(" ")[1];
+    getAuth()
+      .verifyIdToken(accessToken)
+      .then((decodedToken) => {
+        console.log({ decodedToken });
+        res.locals.uid = decodedToken.uid;
+        next();
+      })
+      .catch((err) => {
+        console.log({ err });
+        return res.status(403).json({ message: "Forbidden", error: err });
+      });
+  } else {
+    return res.status(401).json({ message: "Unauthorized" });
+  }
+};
 
-app.use(cors(), bodyParser.json(), expressMiddleware(server));
+app.use(
+  cors(),
+  authorizationJWT,
+  bodyParser.json(),
+  expressMiddleware(server, {
+    context: async ({ req, res }) => {
+      return { uid: res.locals.uid };
+    },
+  })
+);
 // Add middleware to the Express app:
 // 1. `cors()`: Enables Cross-Origin Resource Sharing to allow requests from different origins.
 // 2. `bodyParser.json()`: Parses incoming requests with JSON bodies and makes it accessible via `req.body`.
 // 3. `expressMiddleware(server)`: Integrates Apollo Server with Express to handle GraphQL requests through Express.
 
-await new Promise((resolve) => httpServer.listen({ port: 4000 }, resolve));
-// Start the HTTP server, making it listen for requests on port 4000.
-// `new Promise` ensures the server starts and only resolves when it is ready.
+mongoose.connect(URI).then(async () => {
+  console.log("Connected to DataBase ");
+  await new Promise((resolve) => httpServer.listen({ port: PORT }, resolve));
+  // Start the HTTP server, making it listen for requests on port 4000.
+  // `new Promise` ensures the server starts and only resolves when it is ready.
 
-console.log("Server ready at http://localhost:4000");
-// Log to the console that the server is running and ready to handle requests at localhost:4000.
+  console.log("Server ready at http://localhost:4000");
+  // Log to the console that the server is running and ready to handle requests at localhost:4000.
+});

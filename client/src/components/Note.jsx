@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   ContentState,
   convertFromHTML,
@@ -7,14 +7,14 @@ import {
 } from "draft-js";
 import { Editor } from "react-draft-wysiwyg";
 import { draftToHtml } from "draftjs-to-html";
+import { useLoaderData } from "react-router-dom";
+
 export default function Note() {
-  const note = {
-    id: "9999",
-    content: "<p> this is new note",
-  };
+  const { note } = useLoaderData();
   const [editorState, setEditorState] = useState(() => {
     return EditorState.createEmpty();
   });
+
   const [rawHTML, setRawHTML] = useState(note.content);
 
   useEffect(() => {

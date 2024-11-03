@@ -6,7 +6,7 @@ import AuthProvider from "../context/AuthProvider";
 import ErrorPage from "../pages/ErrorPage";
 import NoteList from "../components/NoteList";
 import Note from "../components/Note";
-import { notesLoader } from "../utils/noteUtils";
+import { noteLoader, notesLoader } from "../utils/noteUtils";
 import { foldersLoader } from "../utils/folderUtils";
 
 // eslint-disable-next-line react-refresh/only-export-components
@@ -45,6 +45,7 @@ export default createBrowserRouter([
                   {
                     element: <Note />,
                     path: `note/:noteId`,
+                    loader: noteLoader,
                   },
                 ],
               },
