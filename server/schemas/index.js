@@ -8,22 +8,24 @@ type Folder {
 }
 
 type Note {
-    id: String,
+    id: String!,
     content: String,
   }
 
 type Author {
-  id: String,
+  id: String!,
+  uid: String!,
   name: String
 }
 
 type Query {
   folders: [Folder]
-  folder(folderId: String): Folder,
+  folder(folderId: String!): Folder,
   note(noteId: String): Note,
 }
 
 type Mutation {
   addFolder(name: String!): Folder,
+  register(uid: String!, name: String!): Author
 }
 `;
